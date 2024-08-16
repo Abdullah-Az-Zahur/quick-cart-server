@@ -29,14 +29,87 @@ async function run() {
     await client.connect();
 
     const database = client.db("QuickCartDB");
-    const userCollection = database.collection("users");
     const productCollection = database.collection("products");
 
-    // Get all the products
-    app.get("/products", async (req, res) => {
-      const result = await productCollection.find().toArray();
-      res.send(result);
-    });
+    // Get all the products with pagination, filtering, and search
+app.get("/products", async (req, res) => {
+  const size = parseInt(req.query.size) || 10; // Default to 10 if not provided
+  const page = parseInt(req.query.page) - 1 || 0; // Default to page 0 if not provided
+  const search = req.query.search || ""; // Default to empty string
+  const filterCategory = req.query.filterCategory;
+  const filterBrand = req.query.filterBrand;
+
+  console.log("Received parameters:", { search, size, page, filterCategory, filterBrand });
+
+  let query = {};
+
+  // Add search filter
+  if (search) {
+    query.title = { $regex: search, $options: "i" };
+  }
+
+  // Add category filter
+  if (filterCategory) {
+    query.category = filterCategory;
+  }
+
+  // Add brand filter
+  if (filterBrand) {
+    query.brand = filterBrand;
+  }
+
+  console.log("Final Query:", query);
+
+  try {
+    // Fetch the products with pagination
+    const result = await productCollection
+      .find(query)
+      .skip(page * size)
+      .limit(size)
+      .toArray();
+
+    console.log("Fetched Products:", result);
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).send({ message: "Failed to fetch products", error });
+  }
+});
+
+// Get product count from database
+app.get("/productCount", async (req, res) => {
+  const search = req.query.search || "";
+  const filterCategory = req.query.filterCategory;
+  const filterBrand = req.query.filterBrand;
+
+  let query = {};
+
+  // Add search filter
+  if (search) {
+    query.title = { $regex: search, $options: "i" };
+  }
+
+  // Add category filter
+  if (filterCategory) {
+    query.category = filterCategory;
+  }
+
+  // Add brand filter
+  if (filterBrand) {
+    query.brand = filterBrand;
+  }
+
+  console.log("Count Query Object:", query);
+
+  try {
+    // Get the count of documents that match the query
+    const count = await productCollection.countDocuments(query);
+    res.send({ count });
+  } catch (error) {
+    console.error("Error fetching product count:", error);
+    res.status(500).send({ message: "Failed to fetch product count", error });
+  }
+});
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
