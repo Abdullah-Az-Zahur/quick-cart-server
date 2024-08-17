@@ -41,84 +41,100 @@ async function run() {
     const productCollection = database.collection("products");
 
     // Get all the products with pagination, filtering, and search
-app.get("/products", async (req, res) => {
-  const size = parseInt(req.query.size) || 10; // Default to 10 if not provided
-  const page = parseInt(req.query.page) - 1 || 0; // Default to page 0 if not provided
-  const search = req.query.search || ""; // Default to empty string
-  const filterCategory = req.query.filterCategory;
-  const filterBrand = req.query.filterBrand;
+    app.get("/products", async (req, res) => {
+      const size = parseInt(req.query.size) || 10; // Default to 10 if not provided
+      const page = parseInt(req.query.page) - 1 || 0; // Default to page 0 if not provided
+      const search = req.query.search || ""; // Default to empty string
+      const filterCategory = req.query.filterCategory;
+      const filterBrand = req.query.filterBrand;
+      const sortPrice = req.query.sortPrice;
 
-  console.log("Received parameters:", { search, size, page, filterCategory, filterBrand });
+      console.log("Received parameters:", {
+        search,
+        size,
+        page,
+        filterCategory,
+        filterBrand,
+      });
 
-  let query = {};
+      let query = {};
+      let sortCriteria = {}; // Initialize an empty sort object
 
-  // Add search filter
-  if (search) {
-    query.title = { $regex: search, $options: "i" };
-  }
+      // Add search filter
+      if (search) {
+        query.title = { $regex: search, $options: "i" };
+      }
 
-  // Add category filter
-  if (filterCategory) {
-    query.category = filterCategory;
-  }
+      // Add category filter
+      if (filterCategory) {
+        query.category = filterCategory;
+      }
 
-  // Add brand filter
-  if (filterBrand) {
-    query.brand = filterBrand;
-  }
+      // Add brand filter
+      if (filterBrand) {
+        query.brand = filterBrand;
+      }
 
-  console.log("Final Query:", query);
+      // Add price sorting
+      if (sortPrice) {
+        sortCriteria.price = sortPrice === "asc" ? 1 : -1;
+      }
 
-  try {
-    // Fetch the products with pagination
-    const result = await productCollection
-      .find(query)
-      .skip(page * size)
-      .limit(size)
-      .toArray();
+      console.log("Final Query:", query);
 
-    console.log("Fetched Products:", result);
-    res.send(result);
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    res.status(500).send({ message: "Failed to fetch products", error });
-  }
-});
+      try {
+        // Fetch the products with pagination
+        const result = await productCollection
+          .find(query)
+          .sort(sortCriteria)
+          .skip(page * size)
+          .limit(size)
+          .toArray();
 
-// Get product count from database
-app.get("/productCount", async (req, res) => {
-  const search = req.query.search || "";
-  const filterCategory = req.query.filterCategory;
-  const filterBrand = req.query.filterBrand;
+        console.log("Fetched Products:", result);
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).send({ message: "Failed to fetch products", error });
+      }
+    });
 
-  let query = {};
+    // Get product count from database
+    app.get("/productCount", async (req, res) => {
+      const search = req.query.search || "";
+      const filterCategory = req.query.filterCategory;
+      const filterBrand = req.query.filterBrand;
 
-  // Add search filter
-  if (search) {
-    query.title = { $regex: search, $options: "i" };
-  }
+      let query = {};
 
-  // Add category filter
-  if (filterCategory) {
-    query.category = filterCategory;
-  }
+      // Add search filter
+      if (search) {
+        query.title = { $regex: search, $options: "i" };
+      }
 
-  // Add brand filter
-  if (filterBrand) {
-    query.brand = filterBrand;
-  }
+      // Add category filter
+      if (filterCategory) {
+        query.category = filterCategory;
+      }
 
-  console.log("Count Query Object:", query);
+      // Add brand filter
+      if (filterBrand) {
+        query.brand = filterBrand;
+      }
 
-  try {
-    // Get the count of documents that match the query
-    const count = await productCollection.countDocuments(query);
-    res.send({ count });
-  } catch (error) {
-    console.error("Error fetching product count:", error);
-    res.status(500).send({ message: "Failed to fetch product count", error });
-  }
-});
+      console.log("Count Query Object:", query);
+
+      try {
+        // Get the count of documents that match the query
+        const count = await productCollection.countDocuments(query);
+        res.send({ count });
+      } catch (error) {
+        console.error("Error fetching product count:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch product count", error });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
